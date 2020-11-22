@@ -1,0 +1,185 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace MonkeyInCSharp {
+    public class Lexer {
+        string input;
+        int position;//this is the current pos
+        int readPosition;//this is next chars' position
+        char ch;//char at 'position'
+
+        public Lexer(string input) {
+            this.input = input;
+            this.readChar();
+        }
+
+        public void readChar() {
+            if (this.readPosition >= input.Length) {
+                this.ch = '\0';
+
+                //setting the char to int 0 would have worked by typecasting it to char 
+                //but setting it to C style NULL (string termination character) is more explicit IMO.
+                //A binary null character is just a char with an integer/ASCII value of 0.
+                //Console.WriteLine(Convert.ToChar(0x0).ToString());//The hexidecimal 0x0 is the null character  
+                //Console.WriteLine('\0'.ToString());
+                //Console.WriteLine(char.MinValue.ToString());
+                //Console.WriteLine(Convert.ToChar(0).ToString());
+            } else {
+                this.ch = this.input[readPosition];
+            }
+
+            this.position = this.readPosition;
+            this.readPosition++;
+        }
+
+        public char peekChar() {
+            if (this.readPosition >= input.Length) {
+                return (char)0;//this is equivalent to '\0'
+            } else {
+                return this.input[readPosition];
+            }
+        }
+
+        public Token NextToken() {
+            Token tok;
+            this.skipWhiteSpace();
+            switch (this.ch) {
+                case '"':
+                    tok = new Token(TokenHelper.TokenType.STRING, this.readString());
+                    //even though we have already read the next char in readString, we still want to call readchar() again(below). Therefore, in this case, do not return here.
+                    break;
+                case '=':
+                    if (this.peekChar() == '=') {
+                        var temp_ch = this.ch;
+                        this.readChar();
+                        string literal = temp_ch.ToString() + this.ch.ToString();
+                        tok = new Token(TokenHelper.TokenType.EQ, literal);
+                    } else {
+                        tok = new Token(TokenHelper.TokenType.ASSIGN, this.ch.ToString());
+                    }
+                    break;
+                case ';':
+                    tok = new Token(TokenHelper.TokenType.SEMICOLON, this.ch.ToString());
+                    break;
+                case ':':
+                    tok = new Token(TokenHelper.TokenType.COLON, this.ch.ToString());
+                    break;
+                case '(':
+                    tok = new Token(TokenHelper.TokenType.LPAREN, this.ch.ToString());
+                    break;
+                case ')':
+                    tok = new Token(TokenHelper.TokenType.RPAREN, this.ch.ToString());
+                    break;
+                case ',':
+                    tok = new Token(TokenHelper.TokenType.COMMA, this.ch.ToString());
+                    break;
+                case '+':
+                    tok = new Token(TokenHelper.TokenType.PLUS, this.ch.ToString());
+                    break;
+                case '{':
+                    tok = new Token(TokenHelper.TokenType.LBRACE, this.ch.ToString());
+                    break;
+                case '}':
+                    tok = new Token(TokenHelper.TokenType.RBRACE, this.ch.ToString());
+                    break;
+                case '[':
+                    tok = new Token(TokenHelper.TokenType.LBRACKET, this.ch.ToString());
+                    break;
+                case ']':
+                    tok = new Token(TokenHelper.TokenType.RBRACKET, this.ch.ToString());
+                    break;
+                case '-':
+                    tok = new Token(TokenHelper.TokenType.MINUS, this.ch.ToString());
+                    break;
+                case '!':
+                    if (this.peekChar() == '=') {
+                        var temp_ch = this.ch;
+                        this.readChar();
+                        string literal = temp_ch.ToString() + this.ch.ToString();
+                        tok = new Token(TokenHelper.TokenType.NOT_EQ, literal);
+                    } else {
+                        tok = new Token(TokenHelper.TokenType.BANG, this.ch.ToString());
+                    }
+                    break;
+                case '/':
+                    tok = new Token(TokenHelper.TokenType.SLASH, this.ch.ToString());
+                    break;
+                case '*':
+                    tok = new Token(TokenHelper.TokenType.ASTERISK, this.ch.ToString());
+                    break;
+                case '<':
+                    tok = new Token(TokenHelper.TokenType.LT, this.ch.ToString());
+                    break;
+                case '>':
+                    tok = new Token(TokenHelper.TokenType.GT, this.ch.ToString());
+                    break;
+                case '\0':
+                    tok = new Token(TokenHelper.TokenType.EOF, this.ch.ToString());//todo:??
+                    break;
+                default:
+                    if (this.isLetter(this.ch)) {
+                        string literal = this.readIdentifier();
+                        TokenHelper.TokenType type = TokenHelper.LookupIdent(literal);
+
+                        tok = new Token(type, literal);
+                        //we don't want to call readchar() again(below) as we have already read the next char in readIdentifier. Therefore return here.
+                        return tok;
+                    } else if (this.isDigit(this.ch)) {
+                        string literal = this.readNumber();
+                        TokenHelper.TokenType type = TokenHelper.TokenType.INT;
+
+                        tok = new Token(type, literal);
+                        //we don't want to call readchar() again(below) as we have already read the next char in readNumber. Therefore return here.
+                        return tok;
+                    } else {
+                        tok = new Token(TokenHelper.TokenType.ILLEGAL, this.ch.ToString());
+                    }
+                    break;
+            }
+
+            this.readChar();
+            return tok;
+        }
+
+        private string readNumber() {
+            var temp_position = this.position;
+            while (isDigit(this.ch)) {
+                this.readChar();
+            }
+            return this.input.Substring(temp_position, (this.position - temp_position) /*+ 1*/);
+        }
+
+        private bool isDigit(char ch) {
+            return '0' <= ch && ch <= '9';
+        }
+
+        private string readIdentifier() {
+            var temp_position = this.position;
+            while (isLetter(this.ch)) {
+                this.readChar();
+            }
+            return this.input.Substring(temp_position, (this.position - temp_position) /*+ 1*/);
+        }
+
+        private string readString() {
+            var temp_position = this.position + 1;
+
+            do {
+                this.readChar();
+            } while (this.ch != '"' && this.ch != '\0');
+
+            return this.input.Substring(temp_position, (this.position - temp_position) /*+ 1*/);
+        }
+
+        private bool isLetter(char ch) {
+            return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' || ch == '_';
+        }
+
+        private void skipWhiteSpace() {
+            while (this.ch == ' ' || this.ch == '\t' || this.ch == '\n' || this.ch == '\r') {
+                this.readChar();
+            }
+        }
+    }
+}

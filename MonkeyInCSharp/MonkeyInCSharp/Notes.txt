@@ -1,0 +1,4 @@
+﻿todo:
+1. Change the reucrisive pratt parser implementation to a one which uses loop to implement the recursive part.
+2. instead of implementing HashKey methods in integer_ast, boolean_ast and string_ast (to allow them to be used as keys), why not imeplment gethashcode and have the HashKey methods call it internally. Or
+ , maybe, even, we do not need HashKey if GetHashCode is implemented??
